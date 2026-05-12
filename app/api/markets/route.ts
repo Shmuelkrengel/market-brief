@@ -82,10 +82,9 @@ const TICKERS = {
 };
 
 // Trading Economics bond yield scraper
-// Returns yield as a number (e.g. 8.79) or null
-async function fetchTEBondYield(country: string): Promise<number | null> {
+async function fetchTEBondYield(path: string): Promise<number | null> {
   try {
-    const res = await fetch(`https://tradingeconomics.com/${country}/government-bond-yield`, {
+    const res = await fetch(`https://tradingeconomics.com/${path}`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         Accept: 'text/html',
@@ -102,23 +101,33 @@ async function fetchTEBondYield(country: string): Promise<number | null> {
 }
 
 async function fetchAllBondsFromTE() {
-  const countries = [
-    { key: 'south-africa', name: 'SA 10yr', region: 'SA' },
-    { key: 'united-kingdom', name: 'UK 10yr Gilt', region: 'UK' },
-    { key: 'germany', name: 'Germany 10yr', region: 'DE' },
-    { key: 'france', name: 'France 10yr', region: 'FR' },
-    { key: 'italy', name: 'Italy 10yr', region: 'IT' },
-    { key: 'japan', name: 'Japan 10yr', region: 'JP' },
-    { key: 'australia', name: 'Australia 10yr', region: 'AU' },
-    { key: 'china', name: 'China 10yr', region: 'CN' },
+  const bonds = [
+    // SA
+    { path: 'south-africa/2-year-note-yield',     name: 'SA 2yr',        region: 'SA' },
+    { path: 'south-africa/5-year-note-yield',     name: 'SA 5yr',        region: 'SA' },
+    { path: 'south-africa/government-bond-yield', name: 'SA 10yr',       region: 'SA' },
+    // UK
+    { path: 'united-kingdom/2-year-note-yield',   name: 'UK 2yr Gilt',   region: 'UK' },
+    { path: 'united-kingdom/5-year-note-yield',   name: 'UK 5yr Gilt',   region: 'UK' },
+    { path: 'united-kingdom/government-bond-yield', name: 'UK 10yr Gilt', region: 'UK' },
+    { path: 'united-kingdom/30-year-bond-yield',  name: 'UK 30yr Gilt',  region: 'UK' },
+    // Europe
+    { path: 'germany/government-bond-yield',      name: 'Germany 10yr',  region: 'DE' },
+    { path: 'france/government-bond-yield',       name: 'France 10yr',   region: 'FR' },
+    { path: 'italy/government-bond-yield',        name: 'Italy 10yr',    region: 'IT' },
+    // Asia/Pacific
+    { path: 'japan/government-bond-yield',        name: 'Japan 10yr',    region: 'JP' },
+    { path: 'australia/government-bond-yield',    name: 'Australia 10yr', region: 'AU' },
+    { path: 'china/government-bond-yield',        name: 'China 10yr',    region: 'CN' },
   ];
+  const countries = bonds;
 
   const results = await Promise.allSettled(
-    countries.map(c => fetchTEBondYield(c.key))
+    countries.map(c => fetchTEBondYield(c.path))
   );
 
   return countries.map((c, i) => ({
-    symbol: `TE:${c.key}`,
+    symbol: `TE:${c.path}`,
     name: c.name,
     region: c.region,
     type: 'yield',
