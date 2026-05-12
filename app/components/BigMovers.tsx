@@ -1,7 +1,7 @@
 'use client';
 
 import { QuoteData, NewsItem, SENSItem } from './types';
-import { explainStock } from '../utils/explainMove';
+import { explainStock, ExplainContext } from '../utils/explainMove';
 
 function fmtPct(val: number | null | undefined): string {
   if (val == null) return '—';
@@ -14,7 +14,7 @@ interface BigMoversProps {
   usMajors: QuoteData[];
   news?: NewsItem[];
   sens?: SENSItem[];
-  commodities?: QuoteData[];
+  ctx?: ExplainContext;
 }
 
 function MoverBar({ changePct }: { changePct: number | null }) {
@@ -30,13 +30,13 @@ function MoverBar({ changePct }: { changePct: number | null }) {
 }
 
 function MoverList({
-  items, title, news = [], sens = [], commodities = [],
+  items, title, news = [], sens = [], ctx = {},
 }: {
   items: QuoteData[];
   title: string;
   news?: NewsItem[];
   sens?: SENSItem[];
-  commodities?: QuoteData[];
+  ctx?: ExplainContext;
 }) {
   const valid = items
     .filter(i => i.changePct != null)
@@ -49,7 +49,7 @@ function MoverList({
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {valid.slice(0, 8).map(item => {
-          const reason = explainStock(item, news, sens, { commodities });
+          const reason = explainStock(item, news, sens, ctx);
           return (
             <div key={item.symbol}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -72,7 +72,7 @@ function MoverList({
   );
 }
 
-export default function BigMovers({ jseMajors, usMajors, news = [], sens = [], commodities = [] }: BigMoversProps) {
+export default function BigMovers({ jseMajors, usMajors, news = [], sens = [], ctx = {} }: BigMoversProps) {
   return (
     <div className="card">
       <div className="card-header">
@@ -80,8 +80,8 @@ export default function BigMovers({ jseMajors, usMajors, news = [], sens = [], c
         Big Movers
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        <MoverList items={jseMajors} title="JSE" news={news} sens={sens} commodities={commodities} />
-        <MoverList items={usMajors} title="US Stocks" news={news} sens={sens} commodities={commodities} />
+        <MoverList items={jseMajors} title="JSE" news={news} sens={sens} ctx={ctx} />
+        <MoverList items={usMajors} title="US Stocks" news={news} sens={sens} ctx={ctx} />
       </div>
     </div>
   );
