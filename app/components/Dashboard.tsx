@@ -10,6 +10,7 @@ import SENSFeed from './SENSFeed';
 import DailyContent from './DailyContent';
 import ExecutiveSummary from './ExecutiveSummary';
 import { MarketData, NewsData, SENSData, DailyContent as DailyContentType } from './types';
+import { explainCard } from '../utils/explainMove';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -64,33 +65,72 @@ export default function Dashboard() {
           <ExecutiveSummary markets={markets} news={news} />
 
           {/* Row 1: US + SA Markets */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
-            <TickerCard title="US Markets" icon="🇺🇸" items={markets?.indicesUS ?? []} />
-            <TickerCard title="SA Markets" icon="🇿🇦" items={markets?.indicesSA ?? []} />
-          </div>
+          {(() => {
+            const allNews = [...(news?.markets ?? []), ...(news?.world ?? []), ...(news?.sa ?? [])];
+            const ctx = { currencies: markets?.currencies, commodities: markets?.commodities };
+            const sensList = sens?.announcements ?? [];
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+                <TickerCard title="US Markets" icon="🇺🇸" items={markets?.indicesUS ?? []}
+                  explanation={markets ? explainCard('US Markets', markets.indicesUS, allNews, sensList, ctx) ?? undefined : undefined} />
+                <TickerCard title="SA Markets" icon="🇿🇦" items={markets?.indicesSA ?? []}
+                  explanation={markets ? explainCard('SA Markets', markets.indicesSA, allNews, sensList, ctx) ?? undefined : undefined} />
+              </div>
+            );
+          })()}
 
           {/* Row 2: European + Asian Markets */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <TickerCard title="European Markets" icon="🇪🇺" items={markets?.indicesEU ?? []} />
-            <TickerCard title="Asian Markets" icon="🌏" items={markets?.indicesASIA ?? []} />
-          </div>
+          {(() => {
+            const allNews = [...(news?.markets ?? []), ...(news?.world ?? []), ...(news?.sa ?? [])];
+            const ctx = { currencies: markets?.currencies, commodities: markets?.commodities };
+            const sensList = sens?.announcements ?? [];
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <TickerCard title="European Markets" icon="🇪🇺" items={markets?.indicesEU ?? []}
+                  explanation={markets ? explainCard('European Markets', markets.indicesEU, allNews, sensList, ctx) ?? undefined : undefined} />
+                <TickerCard title="Asian Markets" icon="🌏" items={markets?.indicesASIA ?? []}
+                  explanation={markets ? explainCard('Asian Markets', markets.indicesASIA, allNews, sensList, ctx) ?? undefined : undefined} />
+              </div>
+            );
+          })()}
 
           {/* Row 3: Currencies + Commodities */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <TickerCard title="Currencies" icon="💱" items={markets?.currencies ?? []} decimals={4} />
-            <TickerCard title="Commodities" icon="🪙" items={markets?.commodities ?? []} showUnit decimals={2} />
-          </div>
+          {(() => {
+            const allNews = [...(news?.markets ?? []), ...(news?.world ?? []), ...(news?.sa ?? [])];
+            const ctx = { currencies: markets?.currencies, commodities: markets?.commodities };
+            const sensList = sens?.announcements ?? [];
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <TickerCard title="Currencies" icon="💱" items={markets?.currencies ?? []} decimals={4}
+                  explanation={markets ? explainCard('Currencies', markets.currencies, allNews, sensList, ctx) ?? undefined : undefined} />
+                <TickerCard title="Commodities" icon="🪙" items={markets?.commodities ?? []} showUnit decimals={2}
+                  explanation={markets ? explainCard('Commodities', markets.commodities, allNews, sensList, ctx) ?? undefined : undefined} />
+              </div>
+            );
+          })()}
 
           {/* Row 4: Bond Tracker */}
-          <BondTracker
-            bondsYahoo={markets?.bondsYahoo ?? []}
-            bondsTE={markets?.bondsTE ?? []}
-          />
+          {(() => {
+            const allNews = [...(news?.markets ?? []), ...(news?.world ?? []), ...(news?.sa ?? [])];
+            const allBonds = [...(markets?.bondsYahoo ?? []), ...(markets?.bondsTE ?? [])];
+            const ctx = { currencies: markets?.currencies, commodities: markets?.commodities };
+            const sensList = sens?.announcements ?? [];
+            return (
+              <BondTracker
+                bondsYahoo={markets?.bondsYahoo ?? []}
+                bondsTE={markets?.bondsTE ?? []}
+                explanation={markets ? explainCard('Bond Yield Tracker', allBonds, allNews, sensList, ctx) ?? undefined : undefined}
+              />
+            );
+          })()}
 
           {/* Row 5: Big Movers */}
           <BigMovers
             jseMajors={markets?.jseMajors ?? []}
             usMajors={markets?.usMajors ?? []}
+            news={[...(news?.markets ?? []), ...(news?.world ?? []), ...(news?.sa ?? [])]}
+            sens={sens?.announcements ?? []}
+            commodities={markets?.commodities ?? []}
           />
 
           {/* Row 6: JSE SENS */}

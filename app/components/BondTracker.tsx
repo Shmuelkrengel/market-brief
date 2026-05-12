@@ -16,6 +16,7 @@ function fmtChange(val: number | null | undefined): string {
 interface BondTrackerProps {
   bondsYahoo?: QuoteData[];
   bondsTE?: QuoteData[];
+  explanation?: string;
 }
 
 const REGION_FLAGS: Record<string, string> = {
@@ -76,7 +77,7 @@ function BondGroup({ title, bonds }: { title: string; bonds: QuoteData[] }) {
   );
 }
 
-export default function BondTracker({ bondsYahoo, bondsTE }: BondTrackerProps) {
+export default function BondTracker({ bondsYahoo, bondsTE, explanation }: BondTrackerProps) {
   const by = bondsYahoo ?? [];
   const bt = bondsTE ?? [];
   const usYahoo = by.filter(b => b.region === 'US');
@@ -102,6 +103,20 @@ export default function BondTracker({ bondsYahoo, bondsTE }: BondTrackerProps) {
         <BondGroup title="🇪🇺 Europe" bonds={euTE} />
         <BondGroup title="Asia / Pacific" bonds={asiaTE} />
       </div>
+      {explanation && (
+        <div style={{
+          marginTop: 14,
+          padding: '7px 10px',
+          background: 'rgba(255,255,255,0.03)',
+          borderRadius: 6,
+          borderLeft: '2px solid rgba(79,195,247,0.25)',
+          fontSize: '0.67rem',
+          color: '#718096',
+          lineHeight: 1.55,
+        }}>
+          💡 {explanation}
+        </div>
+      )}
     </div>
   );
 }

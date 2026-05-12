@@ -35,9 +35,10 @@ interface TickerCardProps {
   items: QuoteData[];
   showUnit?: boolean;
   decimals?: number;
+  explanation?: string;
 }
 
-export default function TickerCard({ title, icon, items, showUnit, decimals = 2 }: TickerCardProps) {
+export default function TickerCard({ title, icon, items, showUnit, decimals = 2, explanation }: TickerCardProps) {
   return (
     <div className="card">
       <div className="card-header">
@@ -70,6 +71,20 @@ export default function TickerCard({ title, icon, items, showUnit, decimals = 2 
           </div>
         </div>
       ))}
+      {explanation && (
+        <div style={{
+          marginTop: 10,
+          padding: '7px 10px',
+          background: 'rgba(255,255,255,0.03)',
+          borderRadius: 6,
+          borderLeft: '2px solid rgba(79,195,247,0.25)',
+          fontSize: '0.67rem',
+          color: '#718096',
+          lineHeight: 1.55,
+        }}>
+          💡 {explanation}
+        </div>
+      )}
     </div>
   );
 }
