@@ -1,6 +1,7 @@
 'use client';
 
 import { QuoteData } from './types';
+import { explainBond, ExplainContext } from '../utils/explainMove';
 
 function fmt(val: number | null | undefined, decimals = 3): string {
   if (val == null) return '—';
@@ -16,7 +17,7 @@ function fmtChange(val: number | null | undefined): string {
 interface BondTrackerProps {
   bondsYahoo?: QuoteData[];
   bondsTE?: QuoteData[];
-  explanation?: string;
+  ctx?: ExplainContext;
 }
 
 const REGION_FLAGS: Record<string, string> = {
@@ -37,10 +38,11 @@ function YieldGauge({ value, max = 12 }: { value: number | null; max?: number })
   );
 }
 
-function BondRow({ bond }: { bond: QuoteData }) {
+function BondRow({ bond, ctx }: { bond: QuoteData; ctx: ExplainContext }) {
   const isUp = (bond.change ?? 0) >= 0;
+  const reason = explainBond(bond, ctx);
   return (
-    <div style={{ marginBottom: 10 }}>
+    <div style={{ marginBottom: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
         <span style={{ fontSize: '0.75rem', color: '#a0aec0' }}>
           {REGION_FLAGS[bond.region ?? ''] ?? ''} {bond.name}
@@ -58,11 +60,16 @@ function BondRow({ bond }: { bond: QuoteData }) {
         </div>
       </div>
       <YieldGauge value={bond.price} />
+      {reason && (
+        <div style={{ fontSize: '0.62rem', color: '#4a5568', marginTop: 4, lineHeight: 1.45 }}>
+          {reason}
+        </div>
+      )}
     </div>
   );
 }
 
-function BondGroup({ title, bonds }: { title: string; bonds: QuoteData[] }) {
+function BondGroup({ title, bonds, ctx }: { title: string; bonds: QuoteData[]; ctx: ExplainContext }) {
   const valid = bonds.filter(b => !b.error || b.price != null);
   return (
     <div>
@@ -71,13 +78,13 @@ function BondGroup({ title, bonds }: { title: string; bonds: QuoteData[] }) {
       </div>
       {valid.length === 0
         ? <div style={{ fontSize: '0.72rem', color: '#4a5568' }}>Loading...</div>
-        : valid.map(b => <BondRow key={b.symbol} bond={b} />)
+        : valid.map(b => <BondRow key={b.symbol} bond={b} ctx={ctx} />)
       }
     </div>
   );
 }
 
-export default function BondTracker({ bondsYahoo, bondsTE, explanation }: BondTrackerProps) {
+export default function BondTracker({ bondsYahoo, bondsTE, ctx = {} }: BondTrackerProps) {
   const by = bondsYahoo ?? [];
   const bt = bondsTE ?? [];
   const usYahoo = by.filter(b => b.region === 'US');
@@ -85,6 +92,9 @@ export default function BondTracker({ bondsYahoo, bondsTE, explanation }: BondTr
   const saTE = bt.filter(b => b.region === 'SA');
   const euTE = bt.filter(b => ['DE', 'FR', 'IT'].includes(b.region ?? ''));
   const asiaTE = bt.filter(b => ['JP', 'AU', 'CN'].includes(b.region ?? ''));
+
+  // Inject TE bonds into ctx so explainBond can compute spreads
+  const enrichedCtx: ExplainContext = { ...ctx, bondsTE: bt, bondsYahoo: by };
 
   return (
     <div className="card">
@@ -97,26 +107,12 @@ export default function BondTracker({ bondsYahoo, bondsTE, explanation }: BondTr
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20 }}>
-        <BondGroup title="🇺🇸 US Treasuries" bonds={usYahoo} />
-        <BondGroup title="🇬🇧 UK Gilts" bonds={ukTE} />
-        <BondGroup title="🇿🇦 South Africa" bonds={saTE} />
-        <BondGroup title="🇪🇺 Europe" bonds={euTE} />
-        <BondGroup title="Asia / Pacific" bonds={asiaTE} />
+        <BondGroup title="🇺🇸 US Treasuries" bonds={usYahoo} ctx={enrichedCtx} />
+        <BondGroup title="🇬🇧 UK Gilts" bonds={ukTE} ctx={enrichedCtx} />
+        <BondGroup title="🇿🇦 South Africa" bonds={saTE} ctx={enrichedCtx} />
+        <BondGroup title="🇪🇺 Europe" bonds={euTE} ctx={enrichedCtx} />
+        <BondGroup title="Asia / Pacific" bonds={asiaTE} ctx={enrichedCtx} />
       </div>
-      {explanation && (
-        <div style={{
-          marginTop: 14,
-          padding: '7px 10px',
-          background: 'rgba(255,255,255,0.03)',
-          borderRadius: 6,
-          borderLeft: '2px solid rgba(79,195,247,0.25)',
-          fontSize: '0.67rem',
-          color: '#718096',
-          lineHeight: 1.55,
-        }}>
-          💡 {explanation}
-        </div>
-      )}
     </div>
   );
 }

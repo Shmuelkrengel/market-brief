@@ -110,7 +110,7 @@ export default function Dashboard() {
                 <BondTracker
                   bondsYahoo={markets?.bondsYahoo ?? []}
                   bondsTE={markets?.bondsTE ?? []}
-                  explanation={explain('Bond Yield Tracker', [...(markets?.bondsYahoo ?? []), ...(markets?.bondsTE ?? [])])}
+                  ctx={ctx}
                 />
 
                 {/* Row 5: Big Movers */}

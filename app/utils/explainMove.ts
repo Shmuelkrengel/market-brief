@@ -275,6 +275,80 @@ function cardCrossAsset(cardName: string, items: QuoteData[], ctx: ExplainContex
   return null;
 }
 
+// ── per-bond explanations ─────────────────────────────────────────────────────
+
+export function explainBond(bond: QuoteData, ctx: ExplainContext): string | null {
+  if (bond.price == null) return null;
+
+  const us10y  = ctx.bondsYahoo?.find(b => b.name === 'US 10yr');
+  const bund   = ctx.bondsTE?.find(b => b.name === 'Germany 10yr');
+  const sa10y  = ctx.bondsTE?.find(b => b.name === 'SA 10yr');
+
+  // ── US Treasuries (have live change data) ──
+  if (bond.region === 'US' && bond.change != null) {
+    const bps = Math.round(Math.abs(bond.change) * 100);
+    const dir = bond.change >= 0 ? 'rose' : 'fell';
+    switch (bond.name) {
+      case 'US 3mo':
+        return `Yield ${dir} ${bps}bps to ${bond.price.toFixed(3)}% — short end tracks the Fed funds rate directly; implies Fed ${bond.price > 5 ? 'firmly in restrictive territory' : 'near neutral'}.`;
+      case 'US 5yr':
+        return `Yield ${dir} ${bps}bps to ${bond.price.toFixed(3)}% — mid-curve; reflects market pricing of the Fed rate path over the next 2–3 years.`;
+      case 'US 10yr':
+        return `Yield ${dir} ${bps}bps to ${bond.price.toFixed(3)}% — the global benchmark. ${bond.price > 4.5 ? 'Elevated yields maintain pressure on rate-sensitive equities.' : 'Contained yields are broadly supportive for risk assets.'}`;
+      case 'US 30yr':
+        return `Yield ${dir} ${bps}bps to ${bond.price.toFixed(3)}% — long-end driven by long-term inflation expectations and US fiscal supply dynamics.`;
+    }
+  }
+
+  // ── UK Gilts ──
+  if (bond.region === 'UK') {
+    const spreadVsUS = us10y?.price != null ? bond.price - us10y.price : null;
+    if (bond.name === 'UK 2yr Gilt')
+      return `At ${bond.price.toFixed(3)}% — short gilt tracks BOE base rate expectations. UK inflation path is the key driver.`;
+    if (bond.name === 'UK 5yr Gilt')
+      return `At ${bond.price.toFixed(3)}% — mid gilt; prices in BOE rate trajectory over the medium term.`;
+    if (bond.name === 'UK 10yr Gilt')
+      return `At ${bond.price.toFixed(3)}%${spreadVsUS != null ? ` (+${(spreadVsUS * 100).toFixed(0)}bps vs US Treasuries)` : ''} — UK-specific fiscal risk and the BOE rate path in focus.`;
+    if (bond.name === 'UK 30yr Gilt')
+      return `At ${bond.price.toFixed(3)}% — long gilt sensitive to UK inflation expectations and pension fund demand dynamics.`;
+  }
+
+  // ── SA Bonds ──
+  if (bond.region === 'SA') {
+    const spreadVsUS = us10y?.price != null ? bond.price - us10y.price : null;
+    if (bond.name === 'SA 2yr') {
+      const slope = sa10y?.price != null ? sa10y.price - bond.price : null;
+      return `At ${bond.price.toFixed(2)}% — tracks SARB repo rate expectations.${slope != null ? ` Yield curve slope: +${slope.toFixed(2)}% to the 10yr.` : ''}`;
+    }
+    if (bond.name === 'SA 5yr')
+      return `At ${bond.price.toFixed(2)}% — mid-curve SA bond; reflects medium-term fiscal and inflation outlook.`;
+    if (bond.name === 'SA 10yr')
+      return `At ${bond.price.toFixed(2)}%${spreadVsUS != null ? ` (+${(spreadVsUS * 100).toFixed(0)}bps over US 10yr)` : ''} — spread over Treasuries reflects SA sovereign risk, fiscal deficit and rand instability.`;
+  }
+
+  // ── European bonds ──
+  if (bond.region === 'DE')
+    return `At ${bond.price.toFixed(3)}% — German Bund is the eurozone risk-free benchmark. ECB rate policy and inflation are the primary drivers.`;
+  if (bond.region === 'FR') {
+    const spread = bund?.price != null ? (bond.price - bund.price) * 100 : null;
+    return `At ${bond.price.toFixed(3)}%${spread != null ? ` (+${spread.toFixed(0)}bps vs Bunds)` : ''} — OAT-Bund spread reflects French fiscal credibility relative to Germany.`;
+  }
+  if (bond.region === 'IT') {
+    const spread = bund?.price != null ? (bond.price - bund.price) * 100 : null;
+    return `At ${bond.price.toFixed(3)}%${spread != null ? ` (+${spread.toFixed(0)}bps vs Bunds)` : ''} — BTP-Bund spread is the primary gauge of Italian sovereign risk.`;
+  }
+
+  // ── Asia / Pacific ──
+  if (bond.region === 'JP')
+    return `At ${bond.price.toFixed(3)}% — JGB yields rising as the BOJ gradually normalises its decades-long ultra-loose monetary policy.`;
+  if (bond.region === 'AU')
+    return `At ${bond.price.toFixed(3)}% — elevated; the RBA is maintaining a restrictive stance to combat sticky services inflation.`;
+  if (bond.region === 'CN')
+    return `At ${bond.price.toFixed(3)}% — low yield reflects PBOC stimulus efforts and deflationary pressures in the Chinese economy.`;
+
+  return null;
+}
+
 // ── public API ────────────────────────────────────────────────────────────────
 
 /** One-line explanation shown under a TickerCard or BondTracker */
