@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
-export const revalidate = 86400; // 24 hours
+export const revalidate = 3600; // 1 hour — ensures concept rotates within an hour of midnight
 
 const FINANCIAL_CONCEPTS = [
   {

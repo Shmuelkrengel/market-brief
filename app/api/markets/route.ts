@@ -82,7 +82,7 @@ const TICKERS = {
 };
 
 // Trading Economics bond yield scraper
-async function fetchTEBondYield(path: string): Promise<number | null> {
+async function fetchTEBondYield(path: string): Promise<{ value: number | null; change: number | null }> {
   try {
     const res = await fetch(`https://tradingeconomics.com/${path}`, {
       headers: {
@@ -91,12 +91,35 @@ async function fetchTEBondYield(path: string): Promise<number | null> {
       },
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { value: null, change: null };
     const html = await res.text();
-    const match = html.match(/"value":(\d+\.\d+)/);
-    return match ? parseFloat(match[1]) : null;
+
+    const valueMatch = html.match(/"value"\s*:\s*([\d.]+)/);
+    const value = valueMatch ? parseFloat(valueMatch[1]) : null;
+
+    // Try common field names TE uses for daily change
+    let change: number | null = null;
+    const changePatterns = [
+      /"change1d"\s*:\s*(-?[\d.]+)/,
+      /"dailychange"\s*:\s*(-?[\d.]+)/i,
+      /"d1"\s*:\s*(-?[\d.]+)/,
+      /"change"\s*:\s*(-?[\d.]+)/,
+      /"DailyChange"\s*:\s*(-?[\d.]+)/,
+    ];
+    for (const pat of changePatterns) {
+      const m = html.match(pat);
+      if (m) { change = parseFloat(m[1]); break; }
+    }
+
+    // Fallback: scrape the visible change text (e.g. "+0.05" in a span)
+    if (change === null) {
+      const textMatch = html.match(/class="[^"]*change[^"]*"[^>]*>\s*([+-]?[\d.]+)\s*</i);
+      if (textMatch) change = parseFloat(textMatch[1]);
+    }
+
+    return { value, change };
   } catch {
-    return null;
+    return { value: null, change: null };
   }
 }
 
@@ -126,17 +149,25 @@ async function fetchAllBondsFromTE() {
     countries.map(c => fetchTEBondYield(c.path))
   );
 
-  return countries.map((c, i) => ({
-    symbol: `TE:${c.path}`,
-    name: c.name,
-    region: c.region,
-    type: 'yield',
-    price: results[i].status === 'fulfilled' ? results[i].value : null,
-    change: null,
-    changePct: null,
-    error: results[i].status !== 'fulfilled' || results[i].value === null,
-    source: 'Trading Economics',
-  }));
+  return countries.map((c, i) => {
+    const result = results[i].status === 'fulfilled' ? results[i].value : { value: null, change: null };
+    const price = result.value;
+    const change = result.change;
+    const changePct = price != null && change != null && (price - change) !== 0
+      ? (change / (price - change)) * 100
+      : null;
+    return {
+      symbol: `TE:${c.path}`,
+      name: c.name,
+      region: c.region,
+      type: 'yield',
+      price,
+      change,
+      changePct,
+      error: results[i].status !== 'fulfilled' || price === null,
+      source: 'Trading Economics',
+    };
+  });
 }
 
 async function fetchQuotes(symbols: string[]) {
