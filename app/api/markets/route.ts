@@ -170,6 +170,31 @@ async function fetchAllBondsFromTE() {
   });
 }
 
+// JSE fetcher using yahooFinance.chart() — uses meta.chartPreviousClose which is accurate,
+// unlike quote()'s regularMarketPreviousClose which has a known stale-data bug for JSE stocks.
+async function fetchChartJSE(tickers: { symbol: string; name: string }[]) {
+  const period1 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days back covers weekends
+
+  const results = await Promise.allSettled(
+    tickers.map(t =>
+      yahooFinance.chart(t.symbol, { period1, interval: '1d' }, { validateResult: false })
+    )
+  );
+
+  return tickers.map((t, i) => {
+    if (results[i].status !== 'fulfilled') return { symbol: t.symbol, name: t.name, price: null, previousClose: null, change: null, changePct: null, error: true };
+    const meta = (results[i].value as Record<string, unknown>)?.meta as Record<string, unknown> | null;
+    if (!meta) return { symbol: t.symbol, name: t.name, price: null, previousClose: null, change: null, changePct: null, error: true };
+
+    const price = meta.regularMarketPrice as number | null ?? null;
+    const previousClose = (meta.chartPreviousClose ?? meta.previousClose) as number | null ?? null;
+    const change = price != null && previousClose != null ? price - previousClose : null;
+    const changePct = change != null && previousClose ? (change / previousClose) * 100 : null;
+
+    return { symbol: t.symbol, name: t.name, price, previousClose, change, changePct, error: price == null };
+  });
+}
+
 async function fetchQuotes(symbols: string[]) {
   try {
     const results = await Promise.allSettled(
@@ -199,7 +224,8 @@ function formatQuote(raw: Record<string, unknown> | null, meta: { symbol: string
 
 export async function GET() {
   try {
-    const allYahooTickers = [
+    // JSE majors use Stooq — Yahoo Finance has a persistent bad-previousClose bug for JSE stocks
+    const yahooOnlyTickers = [
       ...TICKERS.indicesUS,
       ...TICKERS.indicesEU,
       ...TICKERS.indicesASIA,
@@ -207,14 +233,13 @@ export async function GET() {
       ...TICKERS.currencies,
       ...TICKERS.commodities,
       ...TICKERS.bondsYahoo,
-      ...TICKERS.jseMajors,
       ...TICKERS.usMajors,
     ];
 
-    // Fetch Yahoo Finance quotes and TE bonds in parallel
-    const [quotes, teBonds] = await Promise.all([
-      fetchQuotes(allYahooTickers.map(t => t.symbol)),
+    const [quotes, teBonds, jseMajorsData] = await Promise.all([
+      fetchQuotes(yahooOnlyTickers.map(t => t.symbol)),
       fetchAllBondsFromTE(),
+      fetchChartJSE(TICKERS.jseMajors),
     ]);
 
     const quoteMap = Object.fromEntries(quotes.map(q => [q.symbol, q.data]));
@@ -229,7 +254,7 @@ export async function GET() {
       commodities: TICKERS.commodities.map(t => formatQuote(quoteMap[t.symbol] as Record<string, unknown> | null, t)),
       bondsYahoo: TICKERS.bondsYahoo.map(t => formatQuote(quoteMap[t.symbol] as Record<string, unknown> | null, t)),
       bondsTE: teBonds,
-      jseMajors: TICKERS.jseMajors.map(t => formatQuote(quoteMap[t.symbol] as Record<string, unknown> | null, t)),
+      jseMajors: jseMajorsData,
       usMajors: TICKERS.usMajors.map(t => formatQuote(quoteMap[t.symbol] as Record<string, unknown> | null, t)),
     };
 
